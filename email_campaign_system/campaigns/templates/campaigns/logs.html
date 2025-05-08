@@ -1,0 +1,137 @@
+{% extends "campaigns/base.html" %}
+
+{% block title %}Email Logs - Email Campaign System{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2><i class="fas fa-history me-2"></i>Email Delivery Logs</h2>
+        <p class="text-muted">Track and monitor email sending activity</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{% url 'analytics' %}" class="btn btn-primary">
+            <i class="fas fa-chart-bar me-2"></i>View Analytics
+        </a>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-header bg-light">
+        <form method="get" action="{% url 'email_logs' %}" class="row g-2">
+            <div class="col-md-5">
+                <select name="campaign_id" class="form-select" id="campaignFilter">
+                    <option value="">All Campaigns</option>
+                    {% for campaign in campaigns %}
+                        <option value="{{ campaign.id }}" {% if selected_campaign == campaign.id|stringformat:"s" %}selected{% endif %}>
+                            {{ campaign.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="form-select" id="statusFilter">
+                    <option value="">All Statuses</option>
+                    <option value="sent" {% if selected_status == 'sent' %}selected{% endif %}>Sent</option>
+                    <option value="error" {% if selected_status == 'error' %}selected{% endif %}>Error</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="fas fa-filter me-2"></i>Apply Filters
+                </button>
+                <a href="{% url 'email_logs' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times me-2"></i>Clear
+                </a>
+            </div>
+        </form>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Campaign</th>
+                        <th>Recipient</th>
+                        <th>Status</th>
+                        <th>Sent At</th>
+                        <th>Error Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'campaign_detail' campaign_id=log.campaign.id %}">
+                                {{ log.campaign.name }}
+                            </a>
+                        </td>
+                        <td>
+                            {{ log.recipient.email }}
+                            <small class="text-muted d-block">{{ log.recipient.name }}</small>
+                        </td>
+                        <td>
+                            {% if log.status == 'sent' %}
+                                <span class="badge bg-success">Sent</span>
+                            {% else %}
+                                <span class="badge bg-danger">Error</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.sent_at|date:"M d, Y H:i:s" }}</td>
+                        <td>
+                            {% if log.error_message %}
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        data-bs-toggle="tooltip" 
+                                        data-bs-placement="left" 
+                                        title="{{ log.error_message }}">
+                                    <i class="fas fa-exclamation-circle me-1"></i>View Error
+                                </button>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <div class="py-5">
+                                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                <h5>No email logs found</h5>
+                                <p class="text-muted">No emails have been sent yet, or no logs match your filter criteria</p>
+                                {% if selected_campaign or selected_status %}
+                                    <a href="{% url 'email_logs' %}" class="btn btn-primary mt-2">
+                                        <i class="fas fa-times me-2"></i>Clear Filters
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'campaign_create' %}" class="btn btn-primary mt-2">
+                                        <i class="fas fa-paper-plane me-2"></i>Create Campaign
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if logs %}
+    <div class="card-footer bg-light text-center">
+        <small class="text-muted">
+            Showing the most recent 1,000 logs. Use filters to narrow your search.
+        </small>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+});
+</script>
+{% endblock %}

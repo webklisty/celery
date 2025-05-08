@@ -1,0 +1,244 @@
+{% extends "campaigns/base.html" %}
+
+{% block title %}Dashboard - Email Campaign System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-4">
+        <h2><i class="fas fa-chart-line me-2"></i>Dashboard</h2>
+        <p class="text-muted">Overview of your email campaigns and performance metrics</p>
+    </div>
+</div>
+
+<!-- Stats cards -->
+<div class="row">
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card bg-primary text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase text-white-50">Emails Today</h6>
+                        <h2 class="mb-0">{{ today_sent }}</h2>
+                    </div>
+                    <div>
+                        <i class="fas fa-envelope-open fa-3x opacity-25"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <small class="text-white-50">
+                        {{ today_errors }} errors today
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card bg-success text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase text-white-50">Total Campaigns</h6>
+                        <h2 class="mb-0">{{ total_campaigns }}</h2>
+                    </div>
+                    <div>
+                        <i class="fas fa-paper-plane fa-3x opacity-25"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <small class="text-white-50">
+                        {{ status_counts.active }} active, {{ status_counts.scheduled }} scheduled
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card bg-info text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase text-white-50">Total Recipients</h6>
+                        <h2 class="mb-0">{{ total_recipients }}</h2>
+                    </div>
+                    <div>
+                        <i class="fas fa-users fa-3x opacity-25"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <small class="text-white-50">Across all lists</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card bg-warning text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase text-white-50">Total Emails Sent</h6>
+                        <h2 class="mb-0">{{ total_sent }}</h2>
+                    </div>
+                    <div>
+                        <i class="fas fa-chart-bar fa-3x opacity-25"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <small class="text-white-50">All time</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Campaign Status Chart -->
+    <div class="col-lg-5 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Campaign Status</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="campaignStatusChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Campaigns -->
+    <div class="col-lg-7 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-list me-2"></i>Recent Campaigns</h5>
+                <a href="{% url 'campaign_list' %}" class="btn btn-sm btn-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>Status</th>
+                                <th>Schedule</th>
+                                <th>Recipients</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for campaign in recent_campaigns %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'campaign_detail' campaign_id=campaign.id %}">
+                                        {{ campaign.name }}
+                                    </a>
+                                </td>
+                                <td>
+                                    {% if campaign.status == 'active' %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% elif campaign.status == 'scheduled' %}
+                                        <span class="badge bg-primary">Scheduled</span>
+                                    {% elif campaign.status == 'draft' %}
+                                        <span class="badge bg-secondary">Draft</span>
+                                    {% elif campaign.status == 'paused' %}
+                                        <span class="badge bg-warning">Paused</span>
+                                    {% elif campaign.status == 'completed' %}
+                                        <span class="badge bg-info">Completed</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">{{ campaign.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ campaign.scheduled_time|date:"M d, Y" }}</td>
+                                <td>{{ campaign.recipient_list.recipients.count }}</td>
+                                <td>{{ campaign.created_at|date:"M d, Y" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4">
+                                    <i class="fas fa-inbox me-2 text-muted"></i>
+                                    No campaigns yet. <a href="{% url 'campaign_create' %}">Create your first campaign</a>.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Quick Links -->
+    <div class="col-12 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-link me-2"></i>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <a href="{% url 'campaign_create' %}" class="btn btn-primary d-flex justify-content-between align-items-center w-100">
+                            <span><i class="fas fa-plus-circle me-2"></i>Create Campaign</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{% url 'recipient_upload' %}" class="btn btn-success d-flex justify-content-between align-items-center w-100">
+                            <span><i class="fas fa-upload me-2"></i>Upload Recipients</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{% url 'analytics' %}" class="btn btn-info d-flex justify-content-between align-items-center w-100 text-white">
+                            <span><i class="fas fa-chart-line me-2"></i>View Analytics</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Campaign Status Chart
+    const statusCtx = document.getElementById('campaignStatusChart').getContext('2d');
+    const statusChart = new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Draft', 'Scheduled', 'Active', 'Completed', 'Paused'],
+            datasets: [{
+                data: [
+                    {{ status_counts.draft }}, 
+                    {{ status_counts.scheduled }}, 
+                    {{ status_counts.active }}, 
+                    {{ status_counts.completed }}, 
+                    {{ status_counts.paused }}
+                ],
+                backgroundColor: [
+                    '#6c757d',  // Draft - secondary
+                    '#0d6efd',  // Scheduled - primary
+                    '#198754',  // Active - success
+                    '#0dcaf0',  // Completed - info
+                    '#ffc107'   // Paused - warning
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                }
+            },
+            cutout: '70%'
+        }
+    });
+});
+</script>
+{% endblock %}

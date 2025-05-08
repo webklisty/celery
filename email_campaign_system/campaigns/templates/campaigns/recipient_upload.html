@@ -1,0 +1,148 @@
+{% extends "campaigns/base.html" %}
+
+{% block title %}Upload Recipients - Email Campaign System{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2><i class="fas fa-upload me-2"></i>Upload Recipients</h2>
+        <p class="text-muted">Import recipients from a CSV file</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{% url 'recipient_list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Lists
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-file-csv me-2"></i>CSV Upload</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <div class="mb-4">
+                        <label for="{{ form.recipient_list.id_for_label }}" class="form-label">Select Recipient List*</label>
+                        {{ form.recipient_list }}
+                        {% if form.recipient_list.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.recipient_list.errors }}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="mt-2 d-flex justify-content-between">
+                            <div class="form-text">Choose the list where you want to add recipients</div>
+                            <a href="{% url 'recipient_list_create' %}" class="text-primary">
+                                <i class="fas fa-plus-circle me-1"></i>Create New List
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="{{ form.csv_file.id_for_label }}" class="form-label">Upload CSV File*</label>
+                        {{ form.csv_file }}
+                        {% if form.csv_file.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.csv_file.errors }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            Select a CSV file with recipient data. Make sure the file includes 'name' and 'email' columns.
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-upload me-2"></i>Upload Recipients
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card shadow">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Instructions</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-file-csv me-2"></i>CSV File Format</h6>
+                    <p>Your CSV file should have the following columns:</p>
+                    <ul>
+                        <li><strong>name</strong> - Recipient's name</li>
+                        <li><strong>email</strong> - Recipient's email address</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Sample CSV Structure:</h6>
+                    <div class="bg-light p-3 rounded">
+                        <code>name,email<br>John Doe,john@example.com<br>Jane Smith,jane@example.com</code>
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <h6><i class="fas fa-exclamation-triangle me-2"></i>Important Notes</h6>
+                    <ul>
+                        <li>Make sure the CSV file has a header row with column names</li>
+                        <li>Duplicate emails within the same list will be updated, not duplicated</li>
+                        <li>Maximum file size: 5MB</li>
+                    </ul>
+                </div>
+                
+                <a href="#" class="btn btn-outline-secondary btn-sm" onclick="downloadSampleCSV()">
+                    <i class="fas fa-download me-2"></i>Download Sample CSV
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function downloadSampleCSV() {
+    // Create sample CSV content
+    const csvContent = "name,email\nJohn Doe,john@example.com\nJane Smith,jane@example.com";
+    
+    // Create a Blob with the CSV content
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    
+    // Create a URL for the Blob
+    const url = URL.createObjectURL(blob);
+    
+    // Create a temporary link element and trigger download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'sample_recipients.csv';
+    document.body.appendChild(link);
+    link.click();
+    
+    // Clean up
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+// Automatically select recipient list from URL parameter if available
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const listId = urlParams.get('recipient_list');
+    
+    if (listId) {
+        const selectElement = document.getElementById('id_recipient_list');
+        for (let i = 0; i < selectElement.options.length; i++) {
+            if (selectElement.options[i].value === listId) {
+                selectElement.selectedIndex = i;
+                break;
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

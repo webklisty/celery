@@ -1,0 +1,204 @@
+{% extends "campaigns/base.html" %}
+
+{% block title %}Campaigns - Email Campaign System{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2><i class="fas fa-paper-plane me-2"></i>Email Campaigns</h2>
+        <p class="text-muted">Manage your email marketing campaigns</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{% url 'campaign_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Create Campaign
+        </a>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-body p-0">
+        <!-- Campaign Filter -->
+        <div class="bg-light p-3 border-bottom">
+            <div class="row">
+                <div class="col-md-8">
+                    <input type="text" id="campaignSearchInput" class="form-control" placeholder="Search campaigns...">
+                </div>
+                <div class="col-md-4">
+                    <select id="statusFilter" class="form-select">
+                        <option value="">All Statuses</option>
+                        <option value="draft">Draft</option>
+                        <option value="scheduled">Scheduled</option>
+                        <option value="active">Active</option>
+                        <option value="paused">Paused</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Campaign Table -->
+        <div class="table-responsive">
+            <table class="table table-hover campaign-table mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Subject</th>
+                        <th>Status</th>
+                        <th>Type</th>
+                        <th>Schedule</th>
+                        <th>Recipients</th>
+                        <th>Sent</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for campaign in campaigns %}
+                    <tr class="campaign-row" data-status="{{ campaign.status }}">
+                        <td>
+                            <a href="{% url 'campaign_detail' campaign_id=campaign.id %}">
+                                {{ campaign.name }}
+                            </a>
+                        </td>
+                        <td>{{ campaign.subject|truncatechars:30 }}</td>
+                        <td>
+                            {% if campaign.status == 'active' %}
+                                <span class="badge bg-success">Active</span>
+                            {% elif campaign.status == 'scheduled' %}
+                                <span class="badge bg-primary">Scheduled</span>
+                            {% elif campaign.status == 'draft' %}
+                                <span class="badge bg-secondary">Draft</span>
+                            {% elif campaign.status == 'paused' %}
+                                <span class="badge bg-warning">Paused</span>
+                            {% elif campaign.status == 'completed' %}
+                                <span class="badge bg-info">Completed</span>
+                            {% elif campaign.status == 'cancelled' %}
+                                <span class="badge bg-danger">Cancelled</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if campaign.schedule_type == 'one_time' %}
+                                <span class="badge bg-secondary">One Time</span>
+                            {% else %}
+                                <span class="badge bg-info">Recurring</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if campaign.scheduled_time %}
+                                {{ campaign.scheduled_time|date:"M d, Y H:i" }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>{{ campaign.recipient_list.recipients.count }}</td>
+                        <td>
+                            {% with sent_count=campaign.sent_count %}
+                                {{ sent_count }}
+                                {% if sent_count > 0 and campaign.recipient_list.recipients.count > 0 %}
+                                    <small class="text-muted">
+                                        ({{ campaign.completion_percentage }}%)
+                                    </small>
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td>{{ campaign.created_at|date:"M d, Y" }}</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    Actions
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'campaign_detail' campaign_id=campaign.id %}">
+                                            <i class="fas fa-eye me-2"></i>View
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'campaign_edit' campaign_id=campaign.id %}">
+                                            <i class="fas fa-edit me-2"></i>Edit
+                                        </a>
+                                    </li>
+                                    {% if campaign.status == 'active' or campaign.status == 'scheduled' %}
+                                        <li>
+                                            <form action="{% url 'campaign_pause' campaign_id=campaign.id %}" method="post" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="dropdown-item">
+                                                    <i class="fas fa-pause me-2"></i>Pause
+                                                </button>
+                                            </form>
+                                        </li>
+                                    {% elif campaign.status == 'paused' %}
+                                        <li>
+                                            <form action="{% url 'campaign_activate' campaign_id=campaign.id %}" method="post" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="dropdown-item">
+                                                    <i class="fas fa-play me-2"></i>Activate
+                                                </button>
+                                            </form>
+                                        </li>
+                                    {% endif %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item text-danger" href="{% url 'campaign_delete' campaign_id=campaign.id %}">
+                                            <i class="fas fa-trash me-2"></i>Delete
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5">
+                            <div class="py-5">
+                                <i class="fas fa-paper-plane fa-3x text-muted mb-3"></i>
+                                <h5>No campaigns found</h5>
+                                <p class="text-muted">Get started by creating your first email campaign</p>
+                                <a href="{% url 'campaign_create' %}" class="btn btn-primary mt-3">
+                                    <i class="fas fa-plus me-2"></i>Create Campaign
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Campaign search functionality
+    const searchInput = document.getElementById('campaignSearchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const campaignRows = document.querySelectorAll('.campaign-row');
+    
+    function filterCampaigns() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const statusValue = statusFilter.value.toLowerCase();
+        
+        campaignRows.forEach(row => {
+            const campaignName = row.querySelector('td:first-child').textContent.toLowerCase();
+            const campaignSubject = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+            const campaignStatus = row.dataset.status.toLowerCase();
+            
+            const matchesSearch = campaignName.includes(searchTerm) || campaignSubject.includes(searchTerm);
+            const matchesStatus = statusValue === '' || campaignStatus === statusValue;
+            
+            if (matchesSearch && matchesStatus) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+    
+    searchInput.addEventListener('input', filterCampaigns);
+    statusFilter.addEventListener('change', filterCampaigns);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,49 @@
+modules = ["python-3.11"]
+
+[nix]
+channel = "stable-24_05"
+packages = ["redis"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Email Campaign Server"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Email Campaign Worker"
+
+[[workflows.workflow]]
+name = "Email Campaign Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd email_campaign_system && python manage.py migrate && python manage.py runserver 0.0.0.0:5000"
+waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Email Campaign Worker"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd email_campaign_system && ./celery_worker.sh"
+
+[deployment]
+run = ["sh", "-c", "cd email_campaign_system && python manage.py migrate && python manage.py runserver 0.0.0.0:5000"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 6379
+externalPort = 3000

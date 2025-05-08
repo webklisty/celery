@@ -1,0 +1,198 @@
+{% extends "campaigns/base.html" %}
+
+{% block title %}{{ recipient_list.name }} - Recipient List{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2><i class="fas fa-users me-2"></i>{{ recipient_list.name }}</h2>
+        <p class="text-muted">Recipient list details and management</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <div class="btn-group">
+            <a href="{% url 'recipient_upload' %}?recipient_list={{ recipient_list.id }}" class="btn btn-success">
+                <i class="fas fa-upload me-2"></i>Add Recipients
+            </a>
+            <a href="{% url 'recipient_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Lists
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if confirm_delete %}
+<div class="alert alert-danger mb-4">
+    <h4 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i>Confirm Deletion</h4>
+    <p>Are you sure you want to delete the recipient list <strong>{{ recipient_list.name }}</strong>?</p>
+    <p>This will permanently delete the list and all {{ recipients.count }} recipients. This action cannot be undone.</p>
+    <hr>
+    <div class="d-flex justify-content-end">
+        <a href="{% url 'recipient_list_detail' list_id=recipient_list.id %}" class="btn btn-outline-secondary me-2">Cancel</a>
+        <form action="{% url 'recipient_list_delete' list_id=recipient_list.id %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Yes, Delete List</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<div class="card shadow mb-4">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>List Information</h5>
+        <span class="badge bg-primary">{{ recipients.count }} Recipients</span>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>List Name:</strong> {{ recipient_list.name }}</p>
+                <p><strong>Created:</strong> {{ recipient_list.created_at|date:"F d, Y H:i" }}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Campaigns Using This List:</strong> 
+                    {% with count=recipient_list.campaigns.count %}
+                        {% if count %}
+                            {{ count }} campaign{{ count|pluralize }}
+                        {% else %}
+                            None
+                        {% endif %}
+                    {% endwith %}
+                </p>
+                <p><strong>Last Upload:</strong> 
+                    {% with last_recipient=recipients.last %}
+                        {% if last_recipient %}
+                            {{ last_recipient.created_at|date:"F d, Y H:i" }}
+                        {% else %}
+                            No recipients yet
+                        {% endif %}
+                    {% endwith %}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-user me-2"></i>Recipients</h5>
+        <div class="input-group" style="max-width: 300px;">
+            <input type="text" id="recipientSearch" class="form-control" placeholder="Search recipients...">
+            <span class="input-group-text">
+                <i class="fas fa-search"></i>
+            </span>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="recipientTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>Email</th>
+                        <th>Name</th>
+                        <th>Added On</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for recipient in recipients %}
+                    <tr>
+                        <td>{{ recipient.email }}</td>
+                        <td>{{ recipient.name }}</td>
+                        <td>{{ recipient.created_at|date:"M d, Y" }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger delete-recipient" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#deleteRecipientModal" 
+                                    data-recipient-name="{{ recipient.name }}" 
+                                    data-recipient-email="{{ recipient.email }}"
+                                    data-recipient-id="{{ recipient.id }}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr id="emptyRow">
+                        <td colspan="4" class="text-center py-5">
+                            <div class="py-5">
+                                <i class="fas fa-user-plus fa-3x text-muted mb-3"></i>
+                                <h5>No recipients in this list</h5>
+                                <p class="text-muted">Upload recipients using the CSV upload option</p>
+                                <a href="{% url 'recipient_upload' %}?recipient_list={{ recipient_list.id }}" class="btn btn-primary mt-2">
+                                    <i class="fas fa-upload me-2"></i>Upload Recipients
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Recipient Modal -->
+<div class="modal fade" id="deleteRecipientModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <span id="recipientName" class="fw-bold"></span> (<span id="recipientEmail"></span>)?</p>
+                <p class="text-danger">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteRecipientForm" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete Recipient</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Search functionality
+    const searchInput = document.getElementById('recipientSearch');
+    const table = document.getElementById('recipientTable');
+    const rows = table.querySelectorAll('tbody tr:not(#emptyRow)');
+    
+    searchInput.addEventListener('keyup', function() {
+        const searchTerm = searchInput.value.toLowerCase();
+        
+        rows.forEach(row => {
+            const email = row.cells[0].textContent.toLowerCase();
+            const name = row.cells[1].textContent.toLowerCase();
+            
+            if (email.includes(searchTerm) || name.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+    
+    // Delete recipient modal setup
+    const deleteButtons = document.querySelectorAll('.delete-recipient');
+    const recipientNameSpan = document.getElementById('recipientName');
+    const recipientEmailSpan = document.getElementById('recipientEmail');
+    const deleteForm = document.getElementById('deleteRecipientForm');
+    
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const name = this.getAttribute('data-recipient-name');
+            const email = this.getAttribute('data-recipient-email');
+            const id = this.getAttribute('data-recipient-id');
+            
+            recipientNameSpan.textContent = name;
+            recipientEmailSpan.textContent = email;
+            deleteForm.action = `/recipients/${id}/delete/`;
+        });
+    });
+});
+</script>
+{% endblock %}

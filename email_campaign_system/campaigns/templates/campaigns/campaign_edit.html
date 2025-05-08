@@ -1,0 +1,233 @@
+{% extends "campaigns/base.html" %}
+
+{% block title %}Edit Campaign - {{ campaign.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .form-section h4 {
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2><i class="fas fa-edit me-2"></i>Edit Campaign</h2>
+        <p class="text-muted">Modify campaign "{{ campaign.name }}"</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{% url 'campaign_detail' campaign_id=campaign.id %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Campaign
+        </a>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-body p-4">
+        <form method="post" id="campaignForm">
+            {% csrf_token %}
+            
+            <!-- Campaign Details Section -->
+            <div class="form-section">
+                <h4><i class="fas fa-info-circle me-2"></i>Campaign Details</h4>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="{{ form.name.id_for_label }}" class="form-label">Campaign Name*</label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.name.errors }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">A descriptive name for internal reference</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="{{ form.from_name.id_for_label }}" class="form-label">From Name</label>
+                        {{ form.from_name }}
+                        {% if form.from_name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.from_name.errors }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">The sender name that recipients will see</div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.subject.id_for_label }}" class="form-label">Email Subject*</label>
+                    {{ form.subject }}
+                    {% if form.subject.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.subject.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.recipient_list.id_for_label }}" class="form-label">Recipient List*</label>
+                    {{ form.recipient_list }}
+                    {% if form.recipient_list.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.recipient_list.errors }}
+                        </div>
+                    {% endif %}
+                    
+                    <div class="mt-2 d-flex justify-content-between">
+                        <div class="form-text">Select a list of recipients for this campaign</div>
+                        <a href="{% url 'recipient_list_create' %}" class="text-primary">
+                            <i class="fas fa-plus-circle me-1"></i>Create New List
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Email Content Section -->
+            <div class="form-section">
+                <h4><i class="fas fa-envelope me-2"></i>Email Content</h4>
+                
+                <div class="mb-3">
+                    <label for="{{ form.content.id_for_label }}" class="form-label">Email Content*</label>
+                    {{ form.content }}
+                    {% if form.content.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.content.errors }}
+                        </div>
+                    {% endif %}
+                    
+                    <div class="form-text mt-2">
+                        <strong>Personalization Tips:</strong> Use <code>{{name}}</code> to personalize with recipient's name and <code>{{email}}</code> for their email.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Schedule Section -->
+            <div class="form-section">
+                <h4><i class="fas fa-calendar-alt me-2"></i>Schedule Settings</h4>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="{{ form.schedule_type.id_for_label }}" class="form-label">Schedule Type*</label>
+                        {{ form.schedule_type }}
+                        {% if form.schedule_type.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.schedule_type.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="{{ form.status.id_for_label }}" class="form-label">Campaign Status*</label>
+                        {{ form.status }}
+                        {% if form.status.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.status.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="{{ form.scheduled_time.id_for_label }}" class="form-label">Scheduled Time*</label>
+                        {{ form.scheduled_time }}
+                        {% if form.scheduled_time.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.scheduled_time.errors }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">When the campaign should start sending</div>
+                    </div>
+                    <div class="col-md-6 recurring-field">
+                        <label for="{{ form.recurring_days.id_for_label }}" class="form-label">Repeat Every (days)</label>
+                        {{ form.recurring_days }}
+                        {% if form.recurring_days.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.recurring_days.errors }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">For recurring campaigns only</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Submit Buttons -->
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'campaign_detail' campaign_id=campaign.id %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </a>
+                <div>
+                    <button type="submit" name="save_draft" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-save me-2"></i>Save as Draft
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Update Campaign
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Campaign -->
+<div class="card mt-4 border-danger">
+    <div class="card-header bg-danger text-white">
+        <h5 class="mb-0"><i class="fas fa-trash-alt me-2"></i>Danger Zone</h5>
+    </div>
+    <div class="card-body">
+        <h5>Delete Campaign</h5>
+        <p>Once you delete a campaign, there is no going back. Please be certain.</p>
+        <a href="{% url 'campaign_delete' campaign_id=campaign.id %}" class="btn btn-outline-danger">
+            <i class="fas fa-trash-alt me-2"></i>Delete Campaign
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle recurring fields visibility based on schedule type
+    const scheduleTypeSelect = document.getElementById('id_schedule_type');
+    const recurringFields = document.querySelectorAll('.recurring-field');
+    
+    function toggleRecurringFields() {
+        if (scheduleTypeSelect.value === 'recurring') {
+            recurringFields.forEach(field => {
+                field.style.display = 'block';
+            });
+        } else {
+            recurringFields.forEach(field => {
+                field.style.display = 'none';
+            });
+        }
+    }
+    
+    // Initial toggle
+    toggleRecurringFields();
+    
+    // Toggle on change
+    scheduleTypeSelect.addEventListener('change', toggleRecurringFields);
+    
+    // Set default status to draft when saving as draft
+    const form = document.getElementById('campaignForm');
+    const statusSelect = document.getElementById('id_status');
+    const saveDraftButton = document.querySelector('button[name="save_draft"]');
+    
+    saveDraftButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        statusSelect.value = 'draft';
+        form.submit();
+    });
+});
+</script>
+{% endblock %}

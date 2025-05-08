@@ -1,0 +1,269 @@
+{% extends "campaigns/base.html" %}
+
+{% block title %}{{ campaign.name }} - Campaign Details{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2>
+            <i class="fas fa-paper-plane me-2"></i>{{ campaign.name }}
+            {% if campaign.status == 'active' %}
+                <span class="badge bg-success ms-2">Active</span>
+            {% elif campaign.status == 'scheduled' %}
+                <span class="badge bg-primary ms-2">Scheduled</span>
+            {% elif campaign.status == 'draft' %}
+                <span class="badge bg-secondary ms-2">Draft</span>
+            {% elif campaign.status == 'paused' %}
+                <span class="badge bg-warning ms-2">Paused</span>
+            {% elif campaign.status == 'completed' %}
+                <span class="badge bg-info ms-2">Completed</span>
+            {% elif campaign.status == 'cancelled' %}
+                <span class="badge bg-danger ms-2">Cancelled</span>
+            {% endif %}
+        </h2>
+        <p class="text-muted">Campaign details and sending progress</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <div class="btn-group">
+            <a href="{% url 'campaign_edit' campaign_id=campaign.id %}" class="btn btn-outline-primary">
+                <i class="fas fa-edit me-2"></i>Edit
+            </a>
+            
+            {% if campaign.status == 'active' or campaign.status == 'scheduled' %}
+                <form action="{% url 'campaign_pause' campaign_id=campaign.id %}" method="post" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-warning">
+                        <i class="fas fa-pause me-2"></i>Pause
+                    </button>
+                </form>
+            {% elif campaign.status == 'paused' %}
+                <form action="{% url 'campaign_activate' campaign_id=campaign.id %}" method="post" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-success">
+                        <i class="fas fa-play me-2"></i>Activate
+                    </button>
+                </form>
+            {% endif %}
+            
+            <a href="{% url 'campaign_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if confirm_delete %}
+<div class="alert alert-danger mb-4">
+    <h4 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i>Confirm Deletion</h4>
+    <p>Are you sure you want to delete the campaign <strong>{{ campaign.name }}</strong>? This action cannot be undone.</p>
+    <hr>
+    <div class="d-flex justify-content-end">
+        <a href="{% url 'campaign_detail' campaign_id=campaign.id %}" class="btn btn-outline-secondary me-2">Cancel</a>
+        <form action="{% url 'campaign_delete' campaign_id=campaign.id %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Yes, Delete Campaign</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<div class="row">
+    <!-- Campaign Details -->
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Campaign Details</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tbody>
+                        <tr>
+                            <th class="text-muted" style="width: 35%">Subject:</th>
+                            <td>{{ campaign.subject }}</td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">From Name:</th>
+                            <td>{{ campaign.from_name|default:"—" }}</td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">Schedule Type:</th>
+                            <td>
+                                {% if campaign.schedule_type == 'one_time' %}
+                                    One Time
+                                {% else %}
+                                    Recurring (Every {{ campaign.recurring_days }} days)
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">Scheduled For:</th>
+                            <td>
+                                {% if campaign.scheduled_time %}
+                                    {{ campaign.scheduled_time|date:"M d, Y H:i" }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">Recipient List:</th>
+                            <td>
+                                <a href="{% url 'recipient_list_detail' list_id=campaign.recipient_list.id %}">
+                                    {{ campaign.recipient_list.name }}
+                                </a>
+                                <span class="badge bg-secondary">{{ campaign.recipient_list.recipients.count }}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">Created:</th>
+                            <td>{{ campaign.created_at|date:"M d, Y H:i" }}</td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">Last Updated:</th>
+                            <td>{{ campaign.updated_at|date:"M d, Y H:i" }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Progress & Stats -->
+    <div class="col-lg-8 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Campaign Progress</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-4 text-center">
+                        <h6 class="text-muted text-uppercase">Sent</h6>
+                        <h2 class="text-primary">{{ stats.sent }}</h2>
+                        <p class="text-muted">{{ stats.completion_percentage }}% Complete</p>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <h6 class="text-muted text-uppercase">Errors</h6>
+                        <h2 class="text-danger">{{ stats.errors }}</h2>
+                        <p class="text-muted">
+                            {% if stats.total > 0 %}
+                                {{ stats.errors|floatformat:1 }}% Error Rate
+                            {% else %}
+                                —
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <h6 class="text-muted text-uppercase">Remaining</h6>
+                        <h2 class="text-info">{{ stats.remaining }}</h2>
+                        <p class="text-muted">Out of {{ stats.total }}</p>
+                    </div>
+                </div>
+                
+                <div class="progress" style="height: 25px;">
+                    <div class="progress-bar bg-success" 
+                         role="progressbar" 
+                         style="width: {{ stats.completion_percentage }}%;" 
+                         aria-valuenow="{{ stats.completion_percentage }}" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100">
+                        {{ stats.completion_percentage }}%
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Email Preview -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-envelope me-2"></i>Email Content</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex align-items-center bg-light p-2 rounded">
+                        <div><strong>Subject:</strong></div>
+                        <div class="ms-2">{{ campaign.subject }}</div>
+                    </div>
+                </div>
+                
+                <div class="email-preview border rounded p-3" style="max-height: 400px; overflow-y: auto;">
+                    {{ campaign.content|safe }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Logs -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Delivery Logs</h5>
+                <a href="{% url 'email_logs' %}?campaign_id={{ campaign.id }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Recipient</th>
+                                <th>Status</th>
+                                <th>Sent At</th>
+                                <th>Error</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs %}
+                            <tr>
+                                <td>{{ log.recipient.email }}</td>
+                                <td>
+                                    {% if log.status == 'sent' %}
+                                        <span class="badge bg-success">Sent</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Error</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ log.sent_at|date:"M d, Y H:i:s" }}</td>
+                                <td>
+                                    {% if log.error_message %}
+                                        <button class="btn btn-sm btn-outline-danger" 
+                                                data-bs-toggle="tooltip" 
+                                                data-bs-placement="top" 
+                                                title="{{ log.error_message }}">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                        </button>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4">
+                                    <i class="fas fa-inbox me-2 text-muted"></i>
+                                    No email logs yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+});
+</script>
+{% endblock %}

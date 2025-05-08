@@ -1,0 +1,288 @@
+{% extends "campaigns/base.html" %}
+
+{% block title %}Analytics - Email Campaign System{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2><i class="fas fa-chart-bar me-2"></i>Email Analytics</h2>
+        <p class="text-muted">Performance metrics and campaign analytics</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{% url 'email_logs' %}" class="btn btn-outline-primary">
+            <i class="fas fa-history me-2"></i>View Logs
+        </a>
+    </div>
+</div>
+
+<!-- Daily Stats Chart -->
+<div class="card shadow mb-4">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Daily Email Activity</h5>
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-sm btn-outline-primary active" data-days="7" id="last7Days">Last 7 Days</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" data-days="14" id="last14Days">Last 14 Days</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" data-days="30" id="last30Days">Last 30 Days</button>
+        </div>
+    </div>
+    <div class="card-body">
+        <canvas id="dailyStatsChart" height="300"></canvas>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Campaign Performance -->
+    <div class="col-lg-12 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-trophy me-2"></i>Campaign Performance</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Campaign</th>
+                                <th>Status</th>
+                                <th>Recipients</th>
+                                <th>Sent</th>
+                                <th>Errors</th>
+                                <th>Success Rate</th>
+                                <th>Scheduled</th>
+                                <th>Progress</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for campaign in campaigns %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'campaign_detail' campaign_id=campaign.id %}">
+                                        {{ campaign.name }}
+                                    </a>
+                                </td>
+                                <td>
+                                    {% if campaign.status == 'active' %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% elif campaign.status == 'scheduled' %}
+                                        <span class="badge bg-primary">Scheduled</span>
+                                    {% elif campaign.status == 'draft' %}
+                                        <span class="badge bg-secondary">Draft</span>
+                                    {% elif campaign.status == 'paused' %}
+                                        <span class="badge bg-warning">Paused</span>
+                                    {% elif campaign.status == 'completed' %}
+                                        <span class="badge bg-info">Completed</span>
+                                    {% elif campaign.status == 'cancelled' %}
+                                        <span class="badge bg-danger">Cancelled</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ campaign.total_recipients }}</td>
+                                <td>{{ campaign.sent_count }}</td>
+                                <td>{{ campaign.error_count }}</td>
+                                <td>
+                                    {% if campaign.sent_count > 0 %}
+                                        {% with success_rate=campaign.sent_count|floatformat:0|add:"0" %}
+                                            {% with total=campaign.sent_count|add:campaign.error_count %}
+                                                {% if total > 0 %}
+                                                    {% widthratio campaign.sent_count total 100 %}%
+                                                {% else %}
+                                                    —
+                                                {% endif %}
+                                            {% endwith %}
+                                        {% endwith %}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if campaign.scheduled_time %}
+                                        {{ campaign.scheduled_time|date:"M d, Y" }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td style="width: 150px;">
+                                    <div class="progress">
+                                        <div class="progress-bar bg-success" 
+                                             role="progressbar" 
+                                             style="width: {{ campaign.completion_percentage }}%;" 
+                                             aria-valuenow="{{ campaign.completion_percentage }}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="100">
+                                            {{ campaign.completion_percentage }}%
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center py-5">
+                                    <div class="py-5">
+                                        <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+                                        <h5>No campaign data available</h5>
+                                        <p class="text-muted">Create and run campaigns to see performance analytics</p>
+                                        <a href="{% url 'campaign_create' %}" class="btn btn-primary mt-2">
+                                            <i class="fas fa-plus me-2"></i>Create Campaign
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Campaign Detailed Stats -->
+    <div class="col-lg-12 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Campaign Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <select id="campaignSelector" class="form-select mb-3">
+                            <option value="">Select a campaign</option>
+                            {% for campaign in campaigns %}
+                                <option value="{{ campaign.id }}">{{ campaign.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div id="campaignStatsContainer" class="d-none">
+                            <canvas id="campaignStatsChart" height="300"></canvas>
+                        </div>
+                        <div id="noCampaignSelected" class="text-center py-5">
+                            <i class="fas fa-chart-pie fa-3x text-muted mb-3"></i>
+                            <h5>No campaign selected</h5>
+                            <p class="text-muted">Select a campaign from the dropdown to see detailed statistics</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div id="campaignDetailsContainer" class="d-none">
+                            <h4 id="selectedCampaignName" class="mb-4">Campaign Details</h4>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="card bg-primary text-white">
+                                        <div class="card-body">
+                                            <h6 class="text-uppercase text-white-50">Sent</h6>
+                                            <h3 id="sentCount" class="mb-0">0</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card bg-danger text-white">
+                                        <div class="card-body">
+                                            <h6 class="text-uppercase text-white-50">Errors</h6>
+                                            <h3 id="errorCount" class="mb-0">0</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card bg-info text-white">
+                                        <div class="card-body">
+                                            <h6 class="text-uppercase text-white-50">Total Recipients</h6>
+                                            <h3 id="totalCount" class="mb-0">0</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card bg-success text-white">
+                                        <div class="card-body">
+                                            <h6 class="text-uppercase text-white-50">Success Rate</h6>
+                                            <h3 id="successRate" class="mb-0">0%</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/charts.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize with daily stats data
+    const dailyStatsData = {{ daily_stats|safe }};
+    initDailyStatsChart(dailyStatsData);
+    
+    // Handle time range buttons for daily stats
+    document.querySelectorAll('[data-days]').forEach(button => {
+        button.addEventListener('click', function() {
+            // Update active button
+            document.querySelector('[data-days].active').classList.remove('active');
+            this.classList.add('active');
+            
+            // Fetch data for the selected range
+            const days = this.getAttribute('data-days');
+            fetchDailyStats(days);
+        });
+    });
+    
+    // Handle campaign selection for detailed stats
+    const campaignSelector = document.getElementById('campaignSelector');
+    campaignSelector.addEventListener('change', function() {
+        const campaignId = this.value;
+        
+        if (campaignId) {
+            fetchCampaignStats(campaignId);
+            document.getElementById('noCampaignSelected').classList.add('d-none');
+            document.getElementById('campaignStatsContainer').classList.remove('d-none');
+            document.getElementById('campaignDetailsContainer').classList.remove('d-none');
+        } else {
+            document.getElementById('noCampaignSelected').classList.remove('d-none');
+            document.getElementById('campaignStatsContainer').classList.add('d-none');
+            document.getElementById('campaignDetailsContainer').classList.add('d-none');
+        }
+    });
+});
+
+// Fetch daily stats for a specific time range
+function fetchDailyStats(days) {
+    fetch(`/api/daily-stats/?days=${days}`)
+        .then(response => response.json())
+        .then(data => {
+            updateDailyStatsChart(data);
+        })
+        .catch(error => console.error('Error fetching daily stats:', error));
+}
+
+// Fetch detailed stats for a specific campaign
+function fetchCampaignStats(campaignId) {
+    fetch(`/api/campaign-stats/${campaignId}/`)
+        .then(response => response.json())
+        .then(data => {
+            updateCampaignStats(data, campaignId);
+        })
+        .catch(error => console.error('Error fetching campaign stats:', error));
+}
+
+// Update campaign stats display
+function updateCampaignStats(data, campaignId) {
+    // Update summary numbers
+    document.getElementById('sentCount').textContent = data.sent;
+    document.getElementById('errorCount').textContent = data.errors;
+    document.getElementById('totalCount').textContent = data.total;
+    
+    // Calculate success rate
+    const successRate = data.total > 0 ? Math.round((data.sent / data.total) * 100) : 0;
+    document.getElementById('successRate').textContent = `${successRate}%`;
+    
+    // Get campaign name
+    const campaignSelector = document.getElementById('campaignSelector');
+    const selectedOption = campaignSelector.options[campaignSelector.selectedIndex];
+    document.getElementById('selectedCampaignName').textContent = selectedOption.text;
+    
+    // Update chart
+    updateCampaignStatsChart(data);
+}
+</script>
+{% endblock %}
